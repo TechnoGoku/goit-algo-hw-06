@@ -10,8 +10,8 @@ class Field:
 
 
 class Name(Field):
-    # реалізація класу
-    pass
+    def __init__(self, value):
+        super().__init__(value)
 
 
 class Phone(Field):
@@ -20,6 +20,9 @@ class Phone(Field):
             super().__init__(value)
         else:
             raise ValueError('Value error')
+    
+    def __str__(self):
+        return f'+38{self.value}'
 
 
 class Record:
@@ -34,6 +37,7 @@ class Record:
         # Phone('0951111111') == '0951111111'
         self.phones = [p for p in self.phones if str(p) != phone_number]
 
+    @staticmethod
     def input_error(func):
         def inner(*args, **kwargs):
             try:
@@ -49,41 +53,50 @@ class Record:
                 return "Enter the argument for the command."
         return inner
     
+    @staticmethod
     def parse_input(user_input):
         cmd, *args = user_input.split()
         cmd = cmd.strip().lower()
         return cmd, *args
     
     @input_error
-    def add_contact(args, contacts):
+    def add_contact(args, address_book):
         name, phone = args
-        contacts[name] = phone
+        record = Record(name)
+        record.add_phone(phone)
+        address_book.add_record(record)
         return "Contact added."
     
     @input_error
-    def change_contact(args, contacts):
+    def change_contact(args, address_book):
         name, phone = args
-        if name not in contacts:
+        record = address_book.find(name)
+        if record:
+            record.remove_phone(phone)
+            record.add_phone(phone)
+            return "Contact updated successfully"
+        else:
             raise ValueError("Contact does not exist.")
-        contacts[name] = phone
-        return "Contact updated successfully"
     
     @input_error
-    def show_contact(args, contacts):
+    def show_contact(args, address_book):
         name = args[0]
-        if name in contacts:
-            return contacts[name]
+        record = address_book.find(name)
+        if record:
+            return record
+        else:
+            raise KeyError("Contact not found.")
         
-    def all_contacts(contacts):
-        for name, phone in contacts.items():
-            print(f"Name: {name}, Phone: {phone}")
+    def all_contacts(address_book):
+        for record in address_book.values():
+            print(record)
 
     def main():
-        contacts = {}
+        address_book = AddressBook()
         print("Welcome to the assistant bot!")
         while True:
             user_input = input("Enter a command: ")
-            command, *args = parse_input(user_input)
+            command, *args = Record.parse_input(user_input)
 
             if command in ["close", "exit"]:
                 print("Good bye!")
@@ -91,19 +104,19 @@ class Record:
             elif command == "hello":
                 print("How can I help you?")
             elif command == "add":
-                print(add_contact(args, contacts))
+                print(Record.add_contact(args, address_book))
             elif command == "change":
-                print(change_contact(args, contacts))
+                print(Record.change_contact(args, address_book))
             elif command == "show":
-                print(show_contact(args, contacts))   
+                print(Record.show_contact(args, address_book))   
             elif command == "all": 
-                all_contacts(contacts)             
+                Record.all_contacts(address_book)             
             else:
                 print("Invalid command.")
             
 
     def __str__(self):
-        return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}"
+        return f"Contact name: {self.name.value}, phones: {'; '.join(str(p) for p in self.phones)}"
 
 
 class AddressBook(UserDict):
@@ -114,5 +127,5 @@ class AddressBook(UserDict):
         return self.data.get(name)
 
     def delete(self, name):
-        # Put your logic here
-        pass
+        if name in self.data:
+            del self.data[name]
